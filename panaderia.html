@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panadería Pulgarcito de mis sabores - Pedidos en Línea</title>
+    <!-- Tailwind CSS para un diseño moderno -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- FontAwesome para iconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Stripe JS para procesar pagos con tarjeta reales -->
+    <script src="https://js.stripe.com/v3/"></script>
+    <!-- Estilos avanzados: Splash Screen dinámico con vuelo y efectos de horno -->
+    <style>
+        .bg-splash { background: radial-gradient(circle at center, #78350f 0%, #451a03 100%); }
+
+        @keyframes torogozFly {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            25% { transform: translateY(-15px) rotate(-3deg); }
+            75% { transform: translateY(10px) rotate(3deg); }
+        }
+        
+        @keyframes slideIn {
+            0% { opacity: 0; transform: translateY(30px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes ovenGlow {
+            0%, 100% { box-shadow: 0 0 15px rgba(245, 158, 11, 0.4); }
+            50% { box-shadow: 0 0 30px rgba(245, 158, 11, 0.7); }
+        }
+
+        .animar-torogoz-vuelo { animation: torogozFly 4s ease-in-out infinite; }
+        .texto-entrada { animation: slideIn 1s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards; }
+        .efecto-horno { animation: ovenGlow 2s ease-in-out infinite; }
+    </style>
+</head>
+<body class="bg-amber-50/50 text-gray-800 font-sans">
+
+    <!-- Pantalla de Bienvenida Dinámica (Splash Screen) -->
+    <div id="splash-screen" class="fixed inset-0 bg-splash z-50 flex flex-col items-center justify-center text-white transition-opacity duration-1000">
+        <div class="text-center px-4 flex flex-col items-center max-w-xl">
+            <div class="animar-torogoz-vuelo efecto-horno p-2 rounded-full bg-amber-900/50 border-4 border-amber-500/30 mb-6 shadow-2xl">
+                <img src="1000383629.jpg" alt="Torogoz Panadero" class="w-40 h-40 sm:w-52 sm:h-52 rounded-full object-cover border-4 border-amber-400">
+            </div>
+            
+            <div class="texto-entrada">
+                <h1 class="text-3xl sm:text-5xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-amber-200 to-yellow-400 drop-shadow-lg leading-tight">
+                    Panadería Pulgarcito de mis sabores
+                </h1>
+                <p class="text-amber-300 text-lg font-light italic mt-3 tracking-widest uppercase">
+                    "sabor de nuestra tierra hecho con amor"
+                </p>
+            </div>
+            
+            <div class="mt-8 flex space-x-2">
+                <div class="w-3 h-3 bg-amber-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                <div class="w-3 h-3 bg-amber-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                <div class="w-3 h-3 bg-amber-500 rounded-full animate-bounce"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Contraseña Segura para Acceso Admin -->
+    <div id="admin-password-modal" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-amber-200 text-center">
+            <div class="text-amber-700 text-4xl mb-3">
+                <i class="fa-solid fa-lock"></i>
+            </div>
+            <h3 class="font-bold text-amber-900 text-lg mb-1">Acceso Restringido</h3>
+            <p class="text-xs text-gray-500 mb-4">Ingresa la contraseña de administración para gestionar el inventario y el carrusel.</p>
+            <input type="password" id="admin-pass-input" placeholder="Contraseña segura..." class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 mb-3 text-center">
+            <div class="flex space-x-2">
+                <button onclick="verifyPassword()" class="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 rounded-lg text-sm transition cursor-pointer">Entrar</button>
+                <button onclick="closePasswordModal()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-lg text-sm transition cursor-pointer">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Calificación de Estrellas -->
+    <div id="rating-modal" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl border border-amber-200 text-center">
+            <div class="text-amber-500 text-4xl mb-2">
+                <i class="fa-solid fa-award"></i>
+            </div>
+            <h3 class="font-bold text-amber-900 text-xl mb-1">¡Casi terminamos tu pedido!</h3>
+            <p class="text-xs text-gray-500 mb-5">¿Cómo calificarías tu experiencia usando nuestra plataforma web?</p>
+            
+            <div class="flex justify-center space-x-2 mb-4 text-3xl text-gray-300" id="star-container">
+                <button type="button" onclick="setRating(1)" onmouseenter="hoverRating(1)" onmouseleave="resetHover()" class="star-btn cursor-pointer transition hover:scale-110" data-value="1"><i class="fa-solid fa-star"></i></button>
+                <button type="button" onclick="setRating(2)" onmouseenter="hoverRating(2)" onmouseleave="resetHover()" class="star-btn cursor-pointer transition hover:scale-110" data-value="2"><i class="fa-solid fa-star"></i></button>
+                <button type="button" onclick="setRating(3)" onmouseenter="hoverRating(3)" onmouseleave="resetHover()" class="star-btn cursor-pointer transition hover:scale-110" data-value="3"><i class="fa-solid fa-star"></i></button>
+                <button type="button" onclick="setRating(4)" onmouseenter="hoverRating(4)" onmouseleave="resetHover()" class="star-btn cursor-pointer transition hover:scale-110" data-value="4"><i class="fa-solid fa-star"></i></button>
+                <button type="button" onclick="setRating(5)" onmouseenter="hoverRating(5)" onmouseleave="resetHover()" class="star-btn cursor-pointer transition hover:scale-110" data-value="5"><i class="fa-solid fa-star"></i></button>
+            </div>
+
+            <p id="rating-text" class="text-xs font-semibold text-amber-800 mb-4">Selecciona las estrellas para calificar</p>
+            <textarea id="rating-comment" rows="2" placeholder="Déjanos un comentario opcional sobre el servicio web..." class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 text-xs mb-4"></textarea>
+
+            <div class="flex space-x-2">
+                <button onclick="submitRating()" class="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 rounded-xl text-sm transition cursor-pointer shadow-sm">Enviar y Continuar</button>
+                <button onclick="skipRating()" class="bg-gray-100 hover:bg-gray-200 text-gray-600 font-semibold py-2.5 px-4 rounded-xl text-sm transition cursor-pointer">Omitir</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Encabezado -->
+    <header class="bg-amber-700 text-white shadow-md sticky top-0 z-45">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-3 cursor-pointer select-none" onclick="triggerAdminSecret()" title="Panadería Pulgarcito de mis sabores">
+                <div class="w-10 h-10 rounded-full border-2 border-amber-300 overflow-hidden shadow-inner bg-amber-900/40 flex-shrink-0">
+                    <img src="1000383629.jpg" alt="Logo" class="w-full h-full object-cover">
+                </div>
+                <h1 class="text-lg sm:text-xl font-bold tracking-wide">Pulgarcito de mis sabores</h1>
+            </div>
+            <div class="flex items-center space-x-3">
+                <button onclick="toggleAdminMode()" id="admin-btn" class="hidden bg-amber-800 hover:bg-amber-900 px-3 py-2 rounded-xl text-xs sm:text-sm flex items-center space-x-1.5 transition cursor-pointer border border-amber-600">
+                    <i class="fa-solid fa-gear"></i>
+                    <span id="admin-btn-text">Panel Admin</span>
+                </button>
+                
+                <button onclick="toggleCart()" class="relative bg-amber-800 hover:bg-amber-900 px-4 py-2 rounded-xl flex items-center space-x-2 transition cursor-pointer">
+                    <i class="fa-solid fa-shopping-cart"></i>
+                    <span class="hidden sm:inline">Pedido</span>
+                    <span id="cart-count" class="bg-amber-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">0</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Contenido Principal -->
+    <main class="max-w-7xl mx-auto px-4 py-6">
+        
+        <!-- Carrusel de Fotografías Dinámico -->
+        <div class="mb-8">
+            <div class="relative w-full h-56 sm:h-80 md:h-96 rounded-2xl overflow-hidden shadow-lg border border-amber-200 bg-amber-900/10 group">
+                
+                <!-- Las diapositivas se inyectan aquí automáticamente -->
+                <div id="carousel-track" class="flex h-full transition-transform duration-700 ease-in-out"></div>
+
+                <!-- Botón Anterior -->
+                <button onclick="prevSlide()" class="absolute left-4 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/70 text-white w-10 h-10 rounded-full flex items-center justify-center transition opacity-0 group-hover:opacity-100 cursor-pointer">
+                    <i class="fa-solid fa-chevron-left"></i>
+                </button>
+
+                <!-- Botón Siguiente -->
+                <button onclick="nextSlide()" class="absolute right-4 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/70 text-white w-10 h-10 rounded-full flex items-center justify-center transition opacity-0 group-hover:opacity-100 cursor-pointer">
+                    <i class="fa-solid fa-chevron-right"></i>
+                </button>
+
+                <!-- Indicadores (Puntos) -->
+                <div id="carousel-dots" class="absolute bottom-3 left-1/2 -translate-x-1/2 flex space-x-2"></div>
+            </div>
+        </div>
+
+        <!-- Grid de Catálogo y Carrito -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <!-- Sección Izquierda: Catálogo o Panel de Administración -->
+            <section class="lg:col-span-2">
+                
+                <!-- Vista de Cliente: Catálogo -->
+                <div id="catalog-view">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+                        <h2 class="text-2xl font-bold text-amber-900 flex items-center gap-2">
+                            <i class="fa-solid fa-basket-shopping"></i> Nuestro Catálogo de Panes
+                        </h2>
+                        
+                        <div class="relative w-full sm:w-72">
+                            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
+                                <i class="fa-solid fa-search"></i>
+                            </span>
+                            <input type="text" id="search-input" oninput="filterProducts()" placeholder="Buscar pan por nombre..." class="w-full pl-10 pr-4 py-2 bg-white border border-amber-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-sm">
+                        </div>
+                    </div>
+                    
+                    <div id="categories-container" class="space-y-8"></div>
+                </div>
+
+                <!-- Vista de Administración (Inventario y Carrusel) -->
+                <div id="admin-view" class="hidden space-y-6">
+                    
+                    <!-- Sección de Gestión del Carrusel -->
+                    <div class="bg-white p-6 rounded-2xl shadow-md border border-amber-100">
+                        <h2 class="text-xl font-bold text-amber-900 mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-images"></i> Administrar Fotos del Carrusel
+                        </h2>
+                        <div class="bg-amber-50/70 p-4 rounded-xl mb-4 border border-amber-200">
+                            <h3 class="font-bold text-amber-900 mb-3 text-sm flex items-center gap-1.5">
+                                <i class="fa-solid fa-circle-plus"></i> Agregar Foto al Carrusel
+                            </h3>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                                <input type="text" id="carousel-new-text" placeholder="Texto descriptivo (ej. ¡Pan caliente todos los días!)" class="px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 sm:col-span-2">
+                                <div class="sm:col-span-2">
+                                    <label class="block text-xs font-semibold text-gray-600 mb-1">Imagen para el carrusel:</label>
+                                    <input type="file" id="carousel-new-file" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-amber-100 file:text-amber-800 hover:file:bg-amber-200 cursor-pointer bg-white border border-gray-300 rounded-lg p-1">
+                                </div>
+                            </div>
+                            <button onclick="addCarouselSlide()" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 px-4 rounded-lg text-sm transition cursor-pointer shadow-sm">
+                                Subir Foto al Carrusel
+                            </button>
+                        </div>
+                        <div class="space-y-2" id="admin-carousel-list"></div>
+                    </div>
+
+                    <!-- Sección de Gestión de Inventario -->
+                    <div class="bg-white p-6 rounded-2xl shadow-md border border-amber-100">
+                        <h2 class="text-xl font-bold text-amber-900 mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-boxes-stacked"></i> Gestión de Productos y Panes
+                        </h2>
+
+                        <div class="bg-amber-50/70 p-4 rounded-xl mb-6 border border-amber-200">
+                            <h3 class="font-bold text-amber-900 mb-3 text-sm flex items-center gap-1.5">
+                                <i class="fa-solid fa-circle-plus"></i> Agregar Nuevo Pan
+                            </h3>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                                <input type="text" id="new-name" placeholder="Nombre del pan..." class="px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+                                <input type="number" step="0.01" id="new-price" placeholder="Precio (ej. 0.75)" class="px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+                                
+                                <div class="sm:col-span-2">
+                                    <label class="block text-xs font-semibold text-gray-600 mb-1">Categoría:</label>
+                                    <input type="text" id="new-category" placeholder="Ej. Pan Dulce, Tradicional, Especiales..." class="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+                                </div>
+
+                                <input type="text" id="new-desc" placeholder="Breve descripción" class="px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 sm:col-span-2">
+                                <div class="sm:col-span-2">
+                                    <label class="block text-xs font-semibold text-gray-600 mb-1">Fotografía del producto:</label>
+                                    <input type="file" id="new-img-file" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-amber-100 file:text-amber-800 hover:file:bg-amber-200 cursor-pointer bg-white border border-gray-300 rounded-lg p-1">
+                                </div>
+                            </div>
+                            <button onclick="addProduct()" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 px-4 rounded-lg text-sm transition cursor-pointer shadow-sm">
+                                Registrar Producto en el Catálogo
+                            </button>
+                        </div>
+
+                        <div class="space-y-3" id="admin-product-list"></div>
+                    </div>
+
+                </div>
+
+            </section>
+
+            <!-- Panel de Pedido / Carrito -->
+            <section class="bg-white p-6 rounded-2xl shadow-md border border-amber-100 h-fit sticky top-24 z-30">
+                <h2 class="text-xl font-bold text-amber-900 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-receipt"></i> Tu Pedido
+                </h2>
+
+                <div class="mb-4 space-y-3">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Tu Nombre:</label>
+                        <input type="text" id="client-name" placeholder="Ej. Carlos Mendoza" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Tipo de Entrega:</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <label class="flex items-center justify-center p-2.5 border rounded-lg cursor-pointer text-sm font-medium transition bg-amber-50 border-amber-500 text-amber-900 select-none" id="label-pickup">
+                                <input type="radio" name="delivery-type" value="pickup" checked onchange="toggleDeliveryMode()" class="hidden">
+                                <i class="fa-solid fa-store mr-1.5"></i> Retirar
+                            </label>
+                            <label class="flex items-center justify-center p-2.5 border rounded-lg cursor-pointer text-sm font-medium transition bg-white border-gray-200 text-gray-600 select-none" id="label-delivery">
+                                <input type="radio" name="delivery-type" value="delivery" onchange="toggleDeliveryMode()" class="hidden">
+                                <i class="fa-solid fa-motorcycle mr-1.5"></i> Domicilio
+                            </label>
+                        </div>
+                    </div>
+
+                    <div id="address-container" class="hidden space-y-2">
+                        <label class="block text-sm font-medium text-gray-700">Dirección de Entrega:</label>
+                        <textarea id="client-address" rows="2" placeholder="Colonia, calle, referencias..." class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm"></textarea>
+                        
+                        <button type="button" onclick="getLocationGPS()" class="w-full bg-sky-600 hover:bg-sky-700 text-white font-medium py-2 px-3 rounded-lg text-xs flex items-center justify-center space-x-1.5 transition cursor-pointer">
+                            <i class="fa-solid fa-location-dot"></i>
+                            <span id="gps-btn-text">Compartir mi Ubicación Actual (GPS)</span>
+                        </button>
+                        <p id="gps-status" class="text-xs text-gray-500 italic text-center hidden"></p>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Notas o Instrucciones (Opcional):</label>
+                        <input type="text" id="client-notes" placeholder="Ej. Entregar crujiente..." class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm">
+                    </div>
+                </div>
+
+                <hr class="border-amber-100 my-4">
+
+                <!-- Banner Promoción de Cortesías -->
+                <div id="promo-banner" class="bg-amber-50 border border-amber-300 rounded-xl p-3 mb-4 text-xs text-amber-900">
+                    <div class="font-bold flex items-center gap-1.5 mb-1 text-amber-800">
+                        <i class="fa-solid fa-gift"></i> ¡Promoción de Cortesías!
+                    </div>
+                    <p id="promo-text">Agrega más productos para desbloquear panes de cortesía gratis.</p>
+                </div>
+
+                <div id="cart-items" class="space-y-3 max-h-50 overflow-y-auto mb-4 pr-1">
+                    <p class="text-gray-400 text-sm text-center py-4">Tu carrito está vacío</p>
+                </div>
+
+                <div id="cortesias-section" class="hidden bg-emerald-50 border border-emerald-200 p-3 rounded-xl mb-4 space-y-2">
+                    <div class="text-xs font-bold text-emerald-900 flex items-center gap-1">
+                        <i class="fa-solid fa-award"></i> Selecciona tus piezas de cortesía gratis:
+                    </div>
+                    <div id="cortesias-selectors" class="space-y-2"></div>
+                </div>
+
+                <hr class="border-amber-100 my-4">
+
+                <div class="flex justify-between items-center mb-4 text-lg font-bold">
+                    <span>Total estimado:</span>
+                    <span id="cart-total" class="text-amber-700">$0.00</span>
+                </div>
+
+                <div class="mb-5">
+                    <label class="block text-sm font-bold text-gray-700 mb-2">Método de Pago:</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <label class="flex items-center justify-center p-2.5 border rounded-lg cursor-pointer text-sm font-medium transition bg-amber-50 border-amber-500 text-amber-900 select-none" id="label-cash">
+                            <input type="radio" name="payment-method" value="Efectivo" checked class="hidden">
+                            <i class="fa-solid fa-money-bill-wave mr-1.5"></i> Efectivo
+                        </label>
+                        <label class="flex items-center justify-center p-2.5 border rounded-lg cursor-pointer text-sm font-medium transition bg-white border-gray-200 text-gray-600 select-none" id="label-card">
+                            <input type="radio" name="payment-method" value="Tarjeta" class="hidden">
+                            <i class="fa-solid fa-credit-card mr-1.5"></i> Tarjeta Online
+                        </label>
+                    </div>
+                </div>
+
+                <button onclick="openRatingModalFromOrder()" class="w-full bg-amber-700 hover:bg-amber-800 text-white font-bold py-3.5 px-4 rounded-xl flex items-center justify-center space-x-2 transition shadow-lg cursor-pointer transform hover:scale-[1.02]">
+                    <i class="fa-solid fa-paper-plane"></i>
+                    <span class="text-base tracking-wide">Finalizar mi Pedido</span>
+                </button>
+            </section>
+
+        </div>
+    </main>
+
+    <!-- Script de Lógica Integral -->
+    <script>
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                const splash = document.getElementById('splash-screen');
+                splash.style.opacity = '0';
+                setTimeout(() => splash.remove(), 1000);
+            }, 3000);
+        });
+
+        // Estado del Carrusel (Editable)
+        let carouselSlides = [
+            { id: 1, image: "https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=1200&q=80", text: "¡Pan recién horneado y crujiente todos los días!" },
+            { id: 2, image: "https://images.unsplash.com/photo-1549931319-a545dcf3bc73?auto=format&fit=crop&w=1200&q=80", text: "Nuestras famosas conchas tradicionales" },
+            { id: 3, image: "https://images.unsplash.com/photo-1586444248902-2f64eddc13df?auto=format&fit=crop&w=1200&q=80", text: "Repostería fina hecha con amor" }
+        ];
+
+        let currentIndex = 0;
+        let slideInterval;
+
+        function renderCarousel() {
+            const track = document.getElementById('carousel-track');
+            const dotsContainer = document.getElementById('carousel-dots');
+            if (!track || !dotsContainer) return;
+
+            if (carouselSlides.length === 0) {
+                track.innerHTML = `<div class="min-w-full h-full flex items-center justify-center bg-amber-900/20 text-amber-900 font-semibold text-sm">No hay fotos en el carrusel. Agrega una desde el panel de admin.</div>`;
+                dotsContainer.innerHTML = '';
+                return;
+            }
+
+            if (currentIndex >= carouselSlides.length) currentIndex = 0;
+
+            track.innerHTML = carouselSlides.map(slide => `
+                <div class="min-w-full h-full relative">
+                    <img src="${slide.image}" alt="Foto carrusel" class="w-full h-full object-cover">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex items-end p-6">
+                        <p class="text-white font-bold text-lg sm:text-xl drop-shadow-md">${slide.text}</p>
+                    </div>
+                </div>
+            `).join('');
+
+            dotsContainer.innerHTML = carouselSlides.map((_, idx) => `
+                <button onclick="currentSlide(${idx})" class="carousel-dot w-3 h-3 rounded-full transition ${idx === currentIndex ? 'bg-amber-500 w-6' : 'bg-white/60 hover:bg-white'}"></button>
+            `).join('');
+
+            updateCarouselTransform();
+        }
+
+        function updateCarouselTransform() {
+            const track = document.getElementById('carousel-track');
+            if (track) {
+                track.style.transform = `translateX(-${currentIndex * 100}%)`;
+            }
+        }
+
+        function nextSlide() {
+            if (carouselSlides.length === 0) return;
+            currentIndex = (currentIndex + 1) % carouselSlides.length;
+            updateCarouselTransform();
+            updateDotsActive();
+            resetInterval();
+        }
+
+        function prevSlide() {
+            if (carouselSlides.length === 0) return;
+            currentIndex = (currentIndex - 1 + carouselSlides.length) % carouselSlides.length;
+            updateCarouselTransform();
+            updateDotsActive();
+            resetInterval();
+        }
+
+        function currentSlide(index) {
+            currentIndex = index;
+            updateCarouselTransform();
+            updateDotsActive();
+            resetInterval();
+        }
+
+        function updateDotsActive() {
+            const dots = document.querySelectorAll('.carousel-dot');
+            dots.forEach((dot, idx) => {
+                dot.className = `carousel-dot w-3 h-3 rounded-full transition ${idx === currentIndex ? 'bg-amber-500 w-6' : 'bg-white/60 hover:bg-white'}`;
+            });
+        }
+
+        function startInterval() {
+            slideInterval = setInterval(nextSlide, 5000);
+        }
+
+        function resetInterval() {
+            clearInterval(slideInterval);
+            startInterval();
+        }
+
+        renderCarousel();
+        startInterval();
+
+        // Funciones de Edición del Carrusel en Admin
+        function renderAdminCarouselList() {
+            const list = document.getElementById('admin-carousel-list');
+            if (!list) return;
+
+            if (carouselSlides.length === 0) {
+                list.innerHTML = `<p class="text-gray-400 text-xs text-center py-2">No hay imágenes en el carrusel.</p>`;
+                return;
+            }
+
+            list.innerHTML = carouselSlides.map(slide => `
+                <div class="flex items-center justify-between p-2.5 bg-amber-50/50 rounded-xl border border-amber-100 gap-3">
+                    <div class="flex items-center space-x-3 overflow-hidden">
+                        <img src="${slide.image}" class="w-12 h-12 object-cover rounded-lg flex-shrink-0">
+                        <p class="text-xs font-semibold text-amber-900 truncate">${slide.text}</p>
+                    </div>
+                    <button onclick="deleteCarouselSlide(${slide.id})" class="w-8 h-8 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg flex items-center justify-center transition cursor-pointer flex-shrink-0" title="Eliminar foto">
+                        <i class="fa-solid fa-trash text-xs"></i>
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function addCarouselSlide() {
+            const text = document.getElementById('carousel-new-text').value.trim() || "Panadería Pulgarcito de mis sabores";
+            const fileInput = document.getElementById('carousel-new-file');
+
+            if (fileInput.files && fileInput.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    carouselSlides.push({ id: Date.now(), image: e.target.result, text: text });
+                    document.getElementById('carousel-new-text').value = '';
+                    document.getElementById('carousel-new-file').value = '';
+                    renderCarousel();
+                    renderAdminCarouselList();
+                    alert("¡Foto agregada al carrusel con éxito!");
+                };
+                reader.readAsDataURL(fileInput.files[0]);
+            } else {
+                alert("Por favor selecciona una imagen de tu dispositivo.");
+            }
+        }
+
+        function deleteCarouselSlide(id) {
+            if (confirm("¿Estás seguro de eliminar esta foto del carrusel?")) {
+                carouselSlides = carouselSlides.filter(s => s.id !== id);
+                renderCarousel();
+                renderAdminCarouselList();
+            }
+        }
+
+        // Seguridad y Admin
+        const ADMIN_SECRET_PASSWORD = "Pastelito1";
+        let clickCounter = 0;
+        let clickTimer = null;
+        let clientLocationLink = ""; 
+        let currentRating = 0;
+        let pendingOrderData = null;
+
+        const stripe = Stripe('pk_test_TYooMQauvdEDq54NiTphI7jx');
+
+        let products = [
+            { id: 1, name: "Pan Francés", price: 0.50, category: "Pan Salado", desc: "Crujiente por fuera y suave por dentro.", image: "https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=400&q=80", available: true },
+            { id: 2, name: "Concha de Chocolate", price: 0.75, category: "Pan Dulce", desc: "Dulce tradicional con capa crujiente.", image: "https://images.unsplash.com/photo-1549931319-a545dcf3bc73?auto=format&fit=crop&w=400&q=80", available: true },
+            { id: 3, name: "Trenza de Mantequilla", price: 1.50, category: "Repostería", desc: "Horneada con mantequilla fina.", image: "https://images.unsplash.com/photo-1586444248902-2f64eddc13df?auto=format&fit=crop&w=400&q=80", available: true }
+        ];
+
+        let cart = [];
+        let freePiecesSelections = {};
+        let isAdminView = false;
+
+        document.querySelectorAll('input[name="payment-method"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                const labels = document.querySelectorAll('[id^="label-"]');
+                labels.forEach(l => {
+                    l.className = "flex items-center justify-center p-2.5 border rounded-lg cursor-pointer text-sm font-medium transition bg-white border-gray-200 text-gray-600 select-none";
+                });
+                const selectedLabel = document.getElementById(e.target.value === "Efectivo" ? "label-cash" : "label-card");
+                selectedLabel.className = "flex items-center justify-center p-2.5 border rounded-lg cursor-pointer text-sm font-medium transition bg-amber-50 border-amber-500 text-amber-900 select-none";
+            });
+        });
+
+        function hoverRating(value) {
+            const buttons = document.querySelectorAll('.star-btn');
+            buttons.forEach((btn, idx) => {
+                const icon = btn.querySelector('i');
+                if (idx < value) icon.className = "fa-solid fa-star text-amber-400";
+                else icon.className = "fa-solid fa-star text-gray-300";
+            });
+        }
+
+        function resetHover() {
+            highlightStars(currentRating);
+        }
+
+        function setRating(value) {
+            currentRating = value;
+            highlightStars(value);
+            const texts = ["", "Muy insatisfecho 😞", "Insatisfecho 😕", "Neutral 😐", "Satisfecho 😊", "¡Excelente experiencia! 🤩"];
+            document.getElementById('rating-text').textContent = texts[value];
+        }
+
+        function highlightStars(value) {
+            const buttons = document.querySelectorAll('.star-btn');
+            buttons.forEach((btn, idx) => {
+                const icon = btn.querySelector('i');
+                if (idx < value) icon.className = "fa-solid fa-star text-amber-500";
+                else icon.className = "fa-solid fa-star text-gray-300";
+            });
+        }
+
+        function closeRatingModal() {
+            document.getElementById('rating-modal').classList.add('hidden');
+        }
+
+        function openRatingModalFromOrder() {
+            const clientName = document.getElementById('client-name').value.trim();
+            const deliveryType = document.querySelector('input[name="delivery-type"]:checked').value;
+            const clientAddress = document.getElementById('client-address').value.trim();
+
+            if (!clientName) {
+                alert("Por favor, ingresa tu nombre antes de finalizar.");
+                document.getElementById('client-name').focus();
+                return;
+            }
+
+            if (deliveryType === 'delivery' && !clientAddress) {
+                alert("Por favor, ingresa tu dirección de entrega.");
+                document.getElementById('client-address').focus();
+                return;
+            }
+
+            if (cart.length === 0) {
+                alert("Tu carrito está vacío.");
+                return;
+            }
+
+            const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            const allowedFreePieces = getFreePiecesCount(subtotal);
+            let freeItemsList = [];
+            for (let i = 0; i < allowedFreePieces; i++) {
+                const foundProd = products.find(p => p.id == freePiecesSelections[i]);
+                if (foundProd) freeItemsList.push(foundProd);
+            }
+
+            pendingOrderData = {
+                paymentMethod: document.querySelector('input[name="payment-method"]:checked').value,
+                freeItemsList: freeItemsList
+            };
+
+            currentRating = 0;
+            resetHover();
+            document.getElementById('rating-comment').value = '';
+            document.getElementById('rating-text').textContent = "Selecciona las estrellas para calificar";
+            document.getElementById('rating-modal').classList.remove('hidden');
+        }
+
+        function submitRating() {
+            if (currentRating === 0) {
+                alert("Por favor selecciona al menos una estrella.");
+                return;
+            }
+            closeRatingModal();
+            finalizeOrderProcess();
+        }
+
+        function skipRating() {
+            closeRatingModal();
+            finalizeOrderProcess();
+        }
+
+        function finalizeOrderProcess() {
+            if (!pendingOrderData) return;
+
+            if (pendingOrderData.paymentMethod === "Tarjeta") {
+                let stripeItems = cart.map(item => ({
+                    price_data: { currency: 'usd', product_data: { name: item.name }, unit_amount: Math.round(item.price * 100) },
+                    quantity: item.quantity,
+                }));
+                stripe.redirectToCheckout({
+                    lineItems: stripeItems,
+                    mode: 'payment',
+                    successUrl: window.location.href + '?payment=success',
+                    cancelUrl: window.location.href,
+                }).then(function (result) {
+                    if (result.error) alert(result.error.message);
+                });
+                return;
+            }
+
+            sendToWhatsApp("Efectivo", pendingOrderData.freeItemsList);
+        }
+
+        function getLocationGPS() {
+            const statusText = document.getElementById('gps-status');
+            const btnText = document.getElementById('gps-btn-text');
+
+            if (!navigator.geolocation) {
+                alert("Tu navegador no soporta geolocalización.");
+                return;
+            }
+
+            statusText.classList.remove('hidden');
+            statusText.textContent = "Obteniendo ubicación exacta...";
+            btnText.textContent = "Buscando ubicación...";
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const lat = position.coords.latitude;
+                    const lon = position.coords.longitude;
+                    clientLocationLink = `https://maps.google.com/?q=${lat},${lon}`;
+                    statusText.textContent = "¡Ubicación GPS obtenida con éxito! ✅";
+                    btnText.textContent = "Actualizar Ubicación GPS";
+                    
+                    const addressInput = document.getElementById('client-address');
+                    if (!addressInput.value.includes("Ubicación GPS adjunta")) {
+                        addressInput.value += (addressInput.value ? " | " : "") + "📍 Ubicación GPS adjunta.";
+                    }
+                },
+                (error) => {
+                    statusText.textContent = "No se pudo obtener la ubicación.";
+                    btnText.textContent = "Compartir mi Ubicación Actual (GPS)";
+                },
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            );
+        }
+
+        function toggleDeliveryMode() {
+            const deliveryType = document.querySelector('input[name="delivery-type"]:checked').value;
+            const addressContainer = document.getElementById('address-container');
+            const labelPickup = document.getElementById('label-pickup');
+            const labelDelivery = document.getElementById('label-delivery');
+
+            if (deliveryType === 'delivery') {
+                addressContainer.classList.remove('hidden');
+                labelDelivery.className = "flex items-center justify-center p-2.5 border rounded-lg cursor-pointer text-sm font-medium transition bg-amber-50 border-amber-500 text-amber-900 select-none";
+                labelPickup.className = "flex items-center justify-center p-2.5 border rounded-lg cursor-pointer text-sm font-medium transition bg-white border-gray-200 text-gray-600 select-none";
+            } else {
+                addressContainer.classList.add('hidden');
+                labelPickup.className = "flex items-center justify-center p-2.5 border rounded-lg cursor-pointer text-sm font-medium transition bg-amber-50 border-amber-500 text-amber-900 select-none";
+                labelDelivery.className = "flex items-center justify-center p-2.5 border rounded-lg cursor-pointer text-sm font-medium transition bg-white border-gray-200 text-gray-600 select-none";
+            }
+        }
+
+        function triggerAdminSecret() {
+            clickCounter++;
+            clearTimeout(clickTimer);
+            if (clickCounter >= 5) {
+                clickCounter = 0;
+                document.getElementById('admin-password-modal').classList.remove('hidden');
+                document.getElementById('admin-pass-input').value = '';
+                document.getElementById('admin-pass-input').focus();
+            } else {
+                clickTimer = setTimeout(() => { clickCounter = 0; }, 1000);
+            }
+        }
+
+        function verifyPassword() {
+            const inputPass = document.getElementById('admin-pass-input').value;
+            if (inputPass === ADMIN_SECRET_PASSWORD) {
+                closePasswordModal();
+                toggleAdminMode();
+            } else {
+                alert("Contraseña incorrecta.");
+                document.getElementById('admin-pass-input').value = '';
+                document.getElementById('admin-pass-input').focus();
+            }
+        }
+
+        function closePasswordModal() {
+            document.getElementById('admin-password-modal').classList.add('hidden');
+        }
+
+        document.getElementById('admin-pass-input')?.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') verifyPassword();
+        });
+
+        function toggleAdminMode() {
+            isAdminView = !isAdminView;
+            const catalogView = document.getElementById('catalog-view');
+            const adminView = document.getElementById('admin-view');
+            const adminBtn = document.getElementById('admin-btn');
+            const adminBtnText = document.getElementById('admin-btn-text');
+
+            if (isAdminView) {
+                catalogView.classList.add('hidden');
+                adminView.classList.remove('hidden');
+                adminBtn.classList.remove('hidden');
+                adminBtnText.textContent = "Ver Catálogo";
+                renderAdminList();
+                renderAdminCarouselList();
+            } else {
+                adminView.classList.add('hidden');
+                catalogView.classList.remove('hidden');
+                adminBtn.classList.add('hidden');
+                adminBtnText.textContent = "Panel Admin";
+                renderProducts();
+            }
+        }
+
+        function filterProducts() {
+            renderProducts();
+        }
+
+        function renderProducts() {
+            const container = document.getElementById('categories-container');
+            const searchQuery = document.getElementById('search-input').value.toLowerCase().trim();
+            
+            let availableProducts = products.filter(p => p.available);
+
+            if (searchQuery) {
+                availableProducts = availableProducts.filter(p => p.name.toLowerCase().includes(searchQuery));
+            }
+
+            if (availableProducts.length === 0) {
+                container.innerHTML = `<div class="text-center py-10 bg-white rounded-2xl shadow-sm border border-amber-100 p-8">
+                    <i class="fa-solid fa-face-frown text-4xl text-amber-400 mb-3"></i>
+                    <p class="text-amber-900 font-bold text-lg">No se encontraron panes disponibles.</p>
+                </div>`;
+                return;
+            }
+
+            const categories = [...new Set(availableProducts.map(p => p.category ? p.category.trim() : "General"))];
+
+            container.innerHTML = categories.map(cat => `
+                <div>
+                    <h3 class="text-xl font-bold text-amber-900 mb-4 border-b-2 border-amber-200 pb-1.5 flex items-center gap-2">
+                        <i class="fa-solid fa-tag text-amber-600 text-sm"></i> ${cat}
+                    </h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        ${availableProducts.filter(p => (p.category ? p.category.trim() : "General") === cat).map(product => `
+                            <div class="bg-white rounded-2xl shadow-sm border border-amber-100 overflow-hidden flex flex-col justify-between hover:shadow-md transition">
+                                <img src="${product.image}" alt="${product.name}" class="h-40 w-full object-cover">
+                                <div class="p-4 flex flex-col flex-grow">
+                                    <h4 class="font-bold text-lg text-amber-900">${product.name}</h4>
+                                    <p class="text-gray-600 text-sm mt-1 flex-grow">${product.desc}</p>
+                                    <div class="flex justify-between items-center mt-4">
+                                        <span class="text-amber-700 font-bold text-lg">$${product.price.toFixed(2)}</span>
+                                        <button onclick="addToCart(${product.id})" class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-2 rounded-xl text-sm font-semibold transition cursor-pointer flex items-center gap-1">
+                                            <i class="fa-solid fa-plus"></i> Agregar
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderAdminList() {
+            const adminList = document.getElementById('admin-product-list');
+            if (products.length === 0) {
+                adminList.innerHTML = `<p class="text-gray-400 text-sm text-center py-4">No hay productos registrados en el inventario.</p>`;
+                return;
+            }
+
+            adminList.innerHTML = products.map(product => `
+                <div class="flex items-center justify-between p-3 bg-amber-50/50 rounded-xl border border-amber-100 gap-3">
+                    <div class="flex items-center space-x-3 overflow-hidden">
+                        <img src="${product.image}" alt="${product.name}" class="w-12 h-12 object-cover rounded-lg flex-shrink-0">
+                        <div class="truncate">
+                            <h4 class="font-bold text-amber-900 text-sm truncate">${product.name} <span class="text-xs font-normal text-amber-700 bg-amber-100 px-2 py-0.5 rounded ml-1">${product.category || 'General'}</span></h4>
+                            <p class="text-xs text-gray-500">$${product.price.toFixed(2)}</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-2 flex-shrink-0">
+                        <button onclick="toggleAvailability(${product.id})" class="px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${product.available ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200' : 'bg-red-100 text-red-800 hover:bg-red-200'}">
+                            ${product.available ? 'Disponible' : 'Agotado'}
+                        </button>
+                        <button onclick="deleteProduct(${product.id})" class="w-8 h-8 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg flex items-center justify-center transition cursor-pointer" title="Eliminar producto">
+                            <i class="fa-solid fa-trash text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function addProduct() {
+            const name = document.getElementById('new-name').value.trim();
+            const price = parseFloat(document.getElementById('new-price').value);
+            const category = document.getElementById('new-category').value.trim() || "General";
+            const desc = document.getElementById('new-desc').value.trim();
+            const fileInput = document.getElementById('new-img-file');
+
+            if (!name || isNaN(price) || price <= 0) {
+                alert("Por favor, ingresa al menos un nombre válido y un precio correcto.");
+                return;
+            }
+
+            if (fileInput.files && fileInput.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    saveNewProductData(name, price, category, desc, e.target.result);
+                };
+                reader.readAsDataURL(fileInput.files[0]);
+            } else {
+                saveNewProductData(name, price, category, desc, "https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=400&q=80");
+            }
+        }
+
+        function saveNewProductData(name, price, category, desc, imageSrc) {
+            const newProduct = {
+                id: Date.now(),
+                name: name,
+                price: price,
+                category: category,
+                desc: desc || "Pan recién horneado.",
+                image: imageSrc,
+                available: true
+            };
+            products.push(newProduct);
+            document.getElementById('new-name').value = '';
+            document.getElementById('new-price').value = '';
+            document.getElementById('new-category').value = '';
+            document.getElementById('new-desc').value = '';
+            document.getElementById('new-img-file').value = '';
+            renderAdminList();
+            alert(`¡Producto agregado en la categoría "${category}" con éxito!`);
+        }
+
+        function deleteProduct(productId) {
+            if (confirm("¿Estás seguro de que deseas eliminar este producto del inventario?")) {
+                products = products.filter(p => p.id !== productId);
+                cart = cart.filter(item => item.id !== productId);
+                updateCartUI();
+                renderAdminList();
+            }
+        }
+
+        function toggleAvailability(productId) {
+            const product = products.find(p => p.id === productId);
+            if (product) {
+                product.available = !product.available;
+                if (!product.available) {
+                    cart = cart.filter(item => item.id !== productId);
+                    updateCartUI();
+                }
+                renderAdminList();
+            }
+        }
+
+        function addToCart(productId) {
+            const product = products.find(p => p.id === productId);
+            if (!product || !product.available) return;
+            const cartItem = cart.find(item => item.id === productId);
+            if (cartItem) {
+                cartItem.quantity++;
+            } else {
+                cart.push({ ...product, quantity: 1 });
+            }
+            updateCartUI();
+        }
+
+        function changeQuantity(productId, delta) {
+            const item = cart.find(i => i.id === productId);
+            if (item) {
+                item.quantity += delta;
+                if (item.quantity <= 0) {
+                    cart = cart.filter(i => i.id !== productId);
+                }
+            }
+            updateCartUI();
+        }
+
+        function getFreePiecesCount(total) {
+            if (total >= 20) return 4;
+            if (total >= 15) return 3;
+            if (total >= 10) return 2;
+            if (total >= 5) return 1;
+            return 0;
+        }
+
+        function updateCartUI() {
+            const cartItemsContainer = document.getElementById('cart-items');
+            const cartCount = document.getElementById('cart-count');
+            const cartTotal = document.getElementById('cart-total');
+            const promoText = document.getElementById('promo-text');
+            const cortesiasSection = document.getElementById('cortesias-section');
+            const cortesiasSelectors = document.getElementById('cortesias-selectors');
+
+            const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+            cartCount.textContent = totalItems;
+
+            if (cart.length === 0) {
+                cartItemsContainer.innerHTML = `<p class="text-gray-400 text-sm text-center py-4">Tu carrito está vacío</p>`;
+                cartTotal.textContent = "$0.00";
+                promoText.textContent = "Agrega más productos para desbloquear panes de cortesía gratis.";
+                cortesiasSection.classList.add('hidden');
+                freePiecesSelections = {};
+                return;
+            }
+
+            let subtotal = 0;
+            cartItemsContainer.innerHTML = cart.map(item => {
+                const itemSubtotal = item.price * item.quantity;
+                subtotal += itemSubtotal;
+                return `
+                    <div class="flex justify-between items-center bg-amber-50/50 p-2 rounded-lg text-sm">
+                        <div class="flex-grow pr-2">
+                            <p class="font-semibold text-amber-900">${item.name}</p>
+                            <p class="text-xs text-gray-500">$${item.price.toFixed(2)} x ${item.quantity}</p>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <button onclick="changeQuantity(${item.id}, -1)" class="w-6 h-6 bg-white border border-gray-300 rounded flex items-center justify-center text-gray-600 hover:bg-gray-100 cursor-pointer">-</button>
+                            <span class="font-bold text-xs">${item.quantity}</span>
+                            <button onclick="changeQuantity(${item.id}, 1)" class="w-6 h-6 bg-white border border-gray-300 rounded flex items-center justify-center text-gray-600 hover:bg-gray-100 cursor-pointer">+</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            cartTotal.textContent = `$${subtotal.toFixed(2)}`;
+
+            const allowedFreePieces = getFreePiecesCount(subtotal);
+
+            if (allowedFreePieces > 0) {
+                let nextGoalText = "";
+                if (subtotal < 10) nextGoalText = " ¡Agregas $" + (10 - subtotal).toFixed(2) + " más y obtienes 2 piezas!";
+                else if (subtotal < 15) nextGoalText = " ¡Agregas $" + (15 - subtotal).toFixed(2) + " más y obtienes 3 piezas!";
+                else if (subtotal < 20) nextGoalText = " ¡Agregas $" + (20 - subtotal).toFixed(2) + " más y obtienes 4 piezas!";
+                else nextGoalText = " ¡Has alcanzado el beneficio máximo de cortesías!";
+
+                promoText.innerHTML = `<span class="font-bold text-emerald-700">🎉 ¡Felicidades! Tienes derecho a ${allowedFreePieces} pieza(s) de cortesía gratis.</span>` + nextGoalText;
+                cortesiasSection.classList.remove('hidden');
+                
+                const availableProducts = products.filter(p => p.available);
+                let selectorsHTML = "";
+                
+                for (let i = 0; i < allowedFreePieces; i++) {
+                    const currentSelected = freePiecesSelections[i] || (availableProducts[0] ? availableProducts[0].id : "");
+                    selectorsHTML += `
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-semibold text-emerald-800 w-16">Pieza #${i+1}:</span>
+                            <select onchange="updateFreePieceSelection(${i}, this.value)" class="flex-1 bg-white border border-emerald-300 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500">
+                                ${availableProducts.map(p => `<option value="${p.id}" ${currentSelected == p.id ? 'selected' : ''}>${p.name} (${p.category || 'General'}) - Gratis</option>`).join('')}
+                            </select>
+                        </div>
+                    `;
+                }
+                cortesiasSelectors.innerHTML = selectorsHTML;
+
+                for (let i = 0; i < allowedFreePieces; i++) {
+                    if (!freePiecesSelections[i] && availableProducts[0]) {
+                        freePiecesSelections[i] = availableProducts[0].id;
+                    }
+                }
+            } else {
+                promoText.textContent = `¡Estás a solo $${(5 - subtotal).toFixed(2)} de ganar tu primer pan de cortesía gratis! ($5.00 min)`;
+                cortesiasSection.classList.add('hidden');
+                freePiecesSelections = {};
+            }
+        }
+
+        function updateFreePieceSelection(index, productId) {
+            freePiecesSelections[index] = productId;
+        }
+
+        function sendToWhatsApp(paymentMethod, freeItemsList) {
+            const clientName = document.getElementById('client-name').value.trim();
+            const deliveryType = document.querySelector('input[name="delivery-type"]:checked').value;
+            const clientAddress = document.getElementById('client-address').value.trim();
+            const clientNotes = document.getElementById('client-notes').value.trim();
+
+            let message = `¡Hola! Nuevo pedido desde la web de Panadería Pulgarcito de mis sabores:`;
+            message += `\n--------------------------------`;
+            message += `\n👤 Cliente: *${clientName}*`;
+            message += `\n🛵 Tipo de entrega: *${deliveryType === 'delivery' ? 'Servicio a Domicilio' : 'Retirar en Panadería'}*`;
+            message += `\n💳 Método de pago: *${paymentMethod}*`;
+            
+            if (deliveryType === 'delivery') {
+                message += `\n📍 Dirección: *${clientAddress}*`;
+                if (clientLocationLink) message += `\n🗺️ *Ubicación GPS:* ${clientLocationLink}`;
+            }
+
+            if (currentRating > 0) message += `\n⭐ *Calificación web:* ${currentRating}/5 estrellas`;
+
+            message += `\n--------------------------------`;
+            message += `\n🥖 *PRODUCTOS SELECCIONADOS:*`;
+            
+            let total = 0;
+            cart.forEach(item => {
+                const subtotal = item.price * item.quantity;
+                total += subtotal;
+                message += `\n- ${item.quantity}x ${item.name} ($${item.price.toFixed(2)} c/u)`;
+            });
+
+            if (freeItemsList && freeItemsList.length > 0) {
+                message += `\n--------------------------------`;
+                message += `\n🎁 *CORTESÍAS GANADAS (GRATIS):*`;
+                freeItemsList.forEach(fItem => {
+                    message += `\n- 1x ${fItem.name} ($0.00)`;
+                });
+            }
+
+            message += `\n--------------------------------`;
+            message += `\n💰 *Total a pagar:* $${total.toFixed(2)}`;
+            
+            if (clientNotes) message += `\n📝 *Notas:* ${clientNotes}`;
+
+            const storePhoneNumber = "70114091"; 
+            const encodedMessage = encodeURIComponent(message);
+            const whatsappURL = `https://wa.me/${storePhoneNumber}?text=${encodedMessage}`;
+
+            window.open(whatsappURL, '_blank');
+        }
+
+        renderProducts();
+    </script>
+</body>
+</html>
